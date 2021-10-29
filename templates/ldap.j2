@@ -1,0 +1,27 @@
+gitlab_rails['ldap_enabled'] = true
+gitlab_rails['prevent_ldap_sign_in'] = {{ ldap_prevent_ldap_sign_in }}
+
+gitlab_rails['ldap_servers'] = YAML.load <<-'EOS'
+  main: # 'main' is the GitLab 'provider ID' of this LDAP server
+    label: 'LDAP'
+    host: '{{ ldap_host }}'
+    port: {{ ldap_port }}
+    uid: '{{ ldap_uid }}'
+    bind_dn: '{{ ldap_bind_dn }}'
+    encryption: '{{ ldap_encryption }}' # "start_tls" or "simple_tls" or "plain"
+    verify_certificates: {{ ldap_verify_certificates }}
+{% if ldap_ca_file == '' %}
+    password: '{{ ldap_password }}'
+{% else %}
+    password: ''
+    tls_options:
+      ca_file: '/etc/ssl/certs/{{ ldap_ca_file }}'
+{% endif %}
+    smartcard_auth: {{ ldap_smartcard_auth }}
+    active_directory: {{ ldap_active_directory }}
+    allow_username_or_email_login: {{ ldap_allow_username_or_email_login }}
+    lowercase_usernames: {{ ldap_lowercase_usernames }}
+    block_auto_created_users: {{ ldap_block_auto_created_users }}
+    base: '{{ ldap_base }}'
+    user_filter: '{{ ldap_user_filter }}'
+EOS

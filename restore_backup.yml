@@ -1,0 +1,40 @@
+---
+- name: Restore GitLab backup
+  hosts: "gitlab"
+  gather_facts: no
+  vars_files:
+    - "vars/main.yml"
+  become: yes
+  tasks:
+    - name: Copy gitlab-secrets.json
+      copy:
+        src: files/gitlab-secrets.json
+        dest: /etc/gitlab/gitlab-secrets.json
+    
+    - name: Copy backup file
+      copy:
+        src: files/{{ backup_file }}
+        dest: /var/opt/gitlab/backups/
+        owner: 'git'
+        group: 'git'
+    
+    - name: Stop puma
+      command: gitlab-ctl stop puma
+    
+    - name: Stop sidekiq
+      command: gitlab-ctl stop sidekiq
+    
+    - name: Restore backup
+      command: gitlab-backup restore force=yes
+    
+    - name: Reconfigure GitLab
+      command: gitlab-ctl reconfigure
+    
+    - name: Restart GitLab
+      command: gitlab-ctl restart
+    
+    - name: Check GitLab
+      command: gitlab-rake gitlab:check SANITIZE=true
+    
+    - name: Check database
+      command: gitlab-rake gitlab:doctor:secrets

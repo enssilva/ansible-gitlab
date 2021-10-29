@@ -1,0 +1,38 @@
+---
+gitlab_type: 'ce'
+# leave blank to install latest
+gitlab_version: ''
+grafana_enable: false
+
+gitlab_url: 'https://gitlab.local'
+letsencrypt_contatc_email: 'gitlab@local'
+letsencrypt_auto_renew_hour: '6'
+letsencrypt_auto_renew_minute: '0'
+letsencrypt_auto_renew_day_of_month: '*/7'
+
+ldap_configure: true
+ldap_prevent_ldap_sign_in: 'false'
+ldap_host: 'ldap.local'
+ldap_port: '636'
+ldap_uid: 'uid'
+ldap_bind_dn: 'cn=admin,dc=local'
+# you need to set the password only with you are note using ca_file
+# ldap_password: 'ldap_password'
+ldap_encryption: 'simple_tls'
+ldap_verify_certificates: 'false'
+ldap_smartcard_auth: 'false'
+ldap_active_directory: 'false'
+ldap_allow_username_or_email_login: 'true'
+ldap_lowercase_usernames: 'false'
+ldap_block_auto_created_users: 'true'
+ldap_base: 'dc=local'
+ldap_user_filter: ''
+ldap_ca_file: 'slapd.pem'
+
+backup_configure: true
+backup_keep_time: 604800
+backup_nfs_server: 'nfs.server'
+backup_nfs_folder_path: '/nfs/path'
+
+# only used to restore the backup
+backup_file: 'backup_file.tar'

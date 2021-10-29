@@ -1,0 +1,133 @@
+---
+- name: Install GitLab on Ubuntu
+  hosts: "gitlab"
+  gather_facts: no
+  vars_files:
+    - "vars/main.yml"
+  become: yes
+  tasks:
+    - name: Update and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      register: apt_action
+      retries: 50
+      until: apt_action is success or ('Failed to lock apt for exclusive operation' not in apt_action.msg and '/var/lib/dpkg/lock' not in apt_action.msg)
+  
+    - name: Install and configure the necessary dependencies
+      apt:
+        name: ['curl', 'openssh-server', 'ca-certificates', 'tzdata', 'perl']
+        state: present
+    
+    - name: Get script to add the GitLab package repository
+      get_url:
+        url: https://packages.gitlab.com/install/repositories/gitlab/gitlab-{{ gitlab_type }}/script.deb.sh
+        dest: /tmp/script.deb.sh
+        mode: '0500'
+    
+    - name: Add the GitLab package repository
+      shell: /tmp/script.deb.sh
+      args:
+        executable: /bin/bash
+    
+    - name: Install GitLab
+      apt:
+        name: gitlab-{{ gitlab_type }}{{ gitlab_version }}
+        state: present
+    
+    - name: Set URL in configuration
+      lineinfile:
+        path: /etc/gitlab/gitlab.rb
+        regex: '^external_url.*'
+        line: "external_url '{{ gitlab_url }}'"
+        backup: yes
+    
+    - name: Configure Let's Encrypt
+      blockinfile:
+        path: /etc/gitlab/gitlab.rb
+        insertafter: '^external_url.*'
+        marker: "{mark}"
+        marker_begin: "## Let's Encrypt config begin"
+        marker_end: "## Let's Encrypt config end"
+        block: "{{ lookup('template', 'templates/letsencrypt.j2') }}"
+        state: present
+      when: '"https" in gitlab_url'
+
+    - name: Disable Grafana
+      lineinfile:
+        path: /etc/gitlab/gitlab.rb
+        line: "grafana['enable'] = false"
+        state: present
+      when: not grafana_enable | bool
+    
+    - name: Enable URL configuration
+      command: gitlab-ctl reconfigure
+    
+    - name: Configure LDAP authentication
+      block:
+        - name: Create LDAP configuration
+          blockinfile:
+            path: /etc/gitlab/gitlab.rb
+            insertafter: '^###!   in yaml format and the spaces must be retained\. Using tabs will not work\.\*\*'
+            marker: "{mark}"
+            marker_begin: "## LDAP config begin"
+            marker_end: "## LDAP config end"
+            block: "{{ lookup('template', 'templates/ldap.j2') }}"
+            state: present
+        
+        - name: Copy LDAP certificate
+          copy:
+            src: files/{{ ldap_ca_file }}
+            dest: /etc/ssl/certs/{{ ldap_ca_file }}
+          when: ldap_ca_file != ''
+
+        - name: Enable LDAP configuration
+          command: gitlab-ctl reconfigure
+      when: ldap_configure | bool
+
+    - name: Configure backup using mounted NFS folder
+      block:
+        - name: Install rsync
+          apt:
+            name: rsync
+            state: present
+        
+        - name: Install nfs-common
+          apt:
+            name: nfs-common
+            state: present
+
+        - name: Configure fstab
+          ansible.posix.mount:
+            src: "{{ backup_nfs_server }}:{{ backup_nfs_folder_path }}"
+            path: /mnt/backups
+            opts: defaults
+            boot: yes
+            state: mounted
+            fstype: nfs
+
+        - name: Load fstab configuration
+          shell: mount -a
+
+        - name: Create backup configuration
+          blockinfile:
+            path: /etc/gitlab/gitlab.rb
+            insertafter: '^###! The duration in seconds to keep backups before they are allowed to be deleted'
+            marker: "{mark}"
+            marker_begin: "## Backup config begin"
+            marker_end: "## Backup config end"
+            block: "{{ lookup('template', 'templates/backup.j2') }}"
+            state: present
+
+        - name: Configure cron to make daily backups
+          cron:
+            name: 'backup gitlab'
+            minute: '0'
+            hour: '6'
+            job: '/opt/gitlab/bin/gitlab-backup create CRON=1 STRATEGY=copy'
+        
+        - name: Enable backup configuration
+          command: gitlab-ctl reconfigure
+      when: backup_configure | bool

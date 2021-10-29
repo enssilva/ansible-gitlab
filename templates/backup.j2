@@ -1,0 +1,7 @@
+gitlab_rails['backup_keep_time'] = {{ backup_keep_time }}
+
+gitlab_rails['backup_upload_connection'] = {
+  'provider' => 'Local',
+  'local_root' => '/mnt/backups'
+}
+gitlab_rails['backup_upload_remote_directory'] = '.'

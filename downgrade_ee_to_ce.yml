@@ -1,0 +1,26 @@
+---
+- name: Restore GitLab backup
+  hosts: "gitlab"
+  gather_facts: no
+  vars_files:
+    - "vars/main.yml"
+  become: yes
+  tasks:
+    - name: Remove Service Integration entries from the database
+      command: "gitlab-rails runner \"Integration.where(type: ['GithubService']).delete_all\""
+
+    - name: Get script to add the GitLab CE package repository
+      get_url:
+        url: https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh
+        dest: /tmp/script.deb.sh
+        mode: '0500'
+    
+    - name: Add the GitLab CE package repository
+      shell: /tmp/script.deb.sh
+      args:
+        executable: /bin/bash
+    
+    - name: Install GitLab CE
+      apt:
+        name: gitlab-ce{{ gitlab_version }}
+        state: present

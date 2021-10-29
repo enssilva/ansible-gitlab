@@ -1,0 +1,10 @@
+### Let’s Encrypt Settings
+###! Docs: https://docs.gitlab.com/omnibus/settings/ssl.html#lets-encrypt-integration
+
+## SSL Let's Encrypt Integration
+letsencrypt['enable'] = true
+letsencrypt['contact_emails'] = ['{{ letsencrypt_contatc_email }}']
+## Automatic Let’s Encrypt Renewal
+letsencrypt['auto_renew_hour'] = "{{ letsencrypt_auto_renew_hour }}"
+letsencrypt['auto_renew_minute'] = "{{ letsencrypt_auto_renew_minute }}"
+letsencrypt['auto_renew_day_of_month'] = "{{ letsencrypt_auto_renew_day_of_month }}"

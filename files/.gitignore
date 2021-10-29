@@ -1,0 +1,4 @@
+*_gitlab_backup.tar
+gitlab-secrets.json
+slapd.pem
+ssh_key
